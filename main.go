@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/events"
 	"golang.org/x/net/context"
+	"strings"
 )
 
 func main() {
@@ -14,12 +18,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	options := types.ContainerListOptions{All: false}
-	containers, err := cli.ContainerList(context.Background(), options)
+	options := types.EventsOptions{}
+	readCloser, err := cli.Events(context.Background(), options)
 	if err != nil {
 		panic(err)
 	}
-	for _, c := range containers {
-		fmt.Println(c.Image, c.Names)
+	scanner := bufio.NewScanner(readCloser)
+	for scanner.Scan() {
+		var event events.Message
+		err = json.NewDecoder(strings.NewReader(scanner.Text())).Decode(&event)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(event)
 	}
 }
