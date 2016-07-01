@@ -7,6 +7,7 @@ import (
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
+	"github.com/docker/engine-api/types/filters"
 	"golang.org/x/net/context"
 	"strings"
 )
@@ -18,7 +19,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	options := types.EventsOptions{}
+	args := filters.NewArgs()
+	args.Add("Type", events.DaemonEventType)
+	options := types.EventsOptions{Filters: args}
 	readCloser, err := cli.Events(context.Background(), options)
 	if err != nil {
 		panic(err)
@@ -30,6 +33,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(event)
+		action := event.Action
+		actor := event.Actor
+		fmt.Println(actor)
+		fmt.Println(action)
 	}
 }
