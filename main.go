@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/context"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -48,8 +49,19 @@ func main() {
 			}
 			action := event.Action
 			actor := event.Actor
-			fmt.Println(actor)
-			fmt.Println(action)
+			if actor.Attributes["image"] == imageName {
+				fmt.Println(actor)
+				fmt.Println(action)
+				if action == "health_status: unhealthy" {
+					fmt.Println("Stopping", actor.Attributes["name"], "due to failed health check")
+					timeout := 10 * time.Second
+					err := cli.ContainerStop(context.Background(), actor.ID, &timeout)
+					if err != nil {
+						fmt.Println("Failed to stop container", actor.ID)
+						return err
+					}
+				}
+			}
 		}
 		return nil
 	}
