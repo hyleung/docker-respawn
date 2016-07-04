@@ -3,19 +3,20 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
 	"golang.org/x/net/context"
+	"log"
 	"os"
 	"strings"
 	"time"
 )
 
 func main() {
+	logger := log.New(os.Stdout, "respawn ", log.LstdFlags)
 	app := cli.NewApp()
 	app.Name = "docker-respawn"
 	app.Usage = "Restart Docker containers that fail health-check"
@@ -28,7 +29,7 @@ func main() {
 			return nil
 		}
 		defaultHeaders := map[string]string{"User-Agent": "engine-api-cli-1.0"}
-		fmt.Println("Connecting to docker.sock. Checking heatlh status of", imageName)
+		logger.Printf("Connecting to docker.sock. Checking heatlh status of", imageName)
 		cli, err := client.NewClient("unix:///var/run/docker.sock", "1.24", nil, defaultHeaders)
 		if err != nil {
 			return err
@@ -50,14 +51,24 @@ func main() {
 			action := event.Action
 			actor := event.Actor
 			if actor.Attributes["image"] == imageName {
-				fmt.Println(actor)
-				fmt.Println(action)
+				logger.Println(actor)
+				logger.Println(action)
 				if action == "health_status: unhealthy" {
-					fmt.Println("Stopping", actor.Attributes["name"], "due to failed health check")
-					timeout := 10 * time.Second
-					err := cli.ContainerStop(context.Background(), actor.ID, &timeout)
+					//get the continer so that we can re-start it
+					args := filters.NewArgs()
+					args.Add("id", actor.ID)
+					listOptions := types.ContainerListOptions{Filter: args}
+					containers, err := cli.ContainerList(context.Background(), listOptions)
 					if err != nil {
-						fmt.Println("Failed to stop container", actor.ID)
+						logger.Println(err)
+						return err
+					}
+					log.Println(containers[0])
+					logger.Println("Stopping", actor.Attributes["name"], "due to failed health check")
+					timeout := 10 * time.Second
+					stopErr := cli.ContainerStop(context.Background(), actor.ID, &timeout)
+					if stopErr != nil {
+						logger.Println("Failed to stop container", actor.ID)
 						return err
 					}
 				}
