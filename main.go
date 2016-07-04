@@ -65,7 +65,7 @@ func main() {
 					}
 					log.Println(containers[0])
 					logger.Println("Stopping", actor.Attributes["name"], "due to failed health check")
-					timeout := 10 * time.Second
+					timeout := 1 * time.Second
 					stopErr := cli.ContainerStop(context.Background(), actor.ID, &timeout)
 					if stopErr != nil {
 						logger.Println("Failed to stop container", actor.ID)
