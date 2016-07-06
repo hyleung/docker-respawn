@@ -7,6 +7,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/container"
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
 	"golang.org/x/net/context"
@@ -16,7 +17,6 @@ import (
 )
 
 func main() {
-	log.WithFields(log.Fields{}).Info("hello")
 	app := cli.NewApp()
 	app.Name = "docker-respawn"
 	app.Usage = "Restart Docker containers that fail health-check"
@@ -35,7 +35,7 @@ func main() {
 			return nil
 		}
 		defaultHeaders := map[string]string{"User-Agent": "engine-api-cli-1.0"}
-		log.Debug("Connecting to docker.sock. Checking heatlh status of ", imageName)
+		log.Info("Connecting to docker.sock... Checking heatlh status of ", imageName)
 		cli, err := client.NewClient("unix:///var/run/docker.sock", "1.24", nil, defaultHeaders)
 		if err != nil {
 			log.Error(err)
@@ -66,13 +66,12 @@ func main() {
 					//get the continer so that we can re-start it
 					args := filters.NewArgs()
 					args.Add("id", actor.ID)
-					listOptions := types.ContainerListOptions{Filter: args}
-					containers, err := cli.ContainerList(context.Background(), listOptions)
+					//listOptions := types.ContainerListOptions{Filter: args}
+					//containers, err := cli.ContainerList(context.Background(), listOptions)
 					if err != nil {
 						log.Error(err)
 						return err
 					}
-					log.Debug(containers[0])
 					log.Info("Stopping ", actor.Attributes["name"], " due to failed health check")
 					timeout := 1 * time.Second
 					stopErr := cli.ContainerStop(context.Background(), actor.ID, &timeout)
@@ -80,6 +79,20 @@ func main() {
 						log.Error("Failed to stop container ", actor.ID)
 						return err
 					}
+					response, err := cli.ContainerCreate(context.Background(),
+						&container.Config{Image: imageName},
+						nil, nil, "")
+					if err != nil {
+						log.Error(err)
+						return err
+					}
+					log.Info("Created new container: ", response.ID)
+					err = cli.ContainerStart(context.Background(), response.ID, types.ContainerStartOptions{})
+					if err != nil {
+						log.Error(err)
+						return err
+					}
+					log.Info("Container respawned")
 				}
 			}
 		}
