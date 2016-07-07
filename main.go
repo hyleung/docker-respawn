@@ -25,6 +25,10 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{Name: "debug", Usage: "Enable debug level logging"},
 	}
+	customFormatter := new(log.TextFormatter)
+	customFormatter.TimestampFormat = "2006-01-02 15:04:05"
+	log.SetFormatter(customFormatter)
+	customFormatter.FullTimestamp = true
 	app.Action = func(c *cli.Context) error {
 		imageName := c.Args().Get(0)
 		if c.GlobalBool("debug") {
