@@ -7,9 +7,9 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/container"
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
+	"github.com/docker/engine-api/types/network"
 	"golang.org/x/net/context"
 	"os"
 	"strings"
@@ -79,9 +79,13 @@ func main() {
 						log.Error("Failed to stop container ", actor.ID)
 						return err
 					}
+					//get the container
+					stoppedContainer, err := cli.ContainerInspect(context.Background(), actor.ID)
 					response, err := cli.ContainerCreate(context.Background(),
-						&container.Config{Image: imageName},
-						nil, nil, "")
+						stoppedContainer.Config,
+						stoppedContainer.HostConfig,
+						&network.NetworkingConfig{EndpointsConfig: stoppedContainer.NetworkSettings.Networks},
+						"")
 					if err != nil {
 						log.Error(err)
 						return err
