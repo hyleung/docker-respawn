@@ -16,6 +16,20 @@ import (
 	"time"
 )
 
+const (
+	user_agent         = "engine-api-cli-1.0"
+	docker_api_version = "1.24"
+)
+
+func CreateClient() (*client.Client, error) {
+	if os.Getenv("DOCKER_HOST") != "" {
+		return client.NewEnvClient()
+	} else {
+		defaultHeaders := map[string]string{"User-Agent": user_agent}
+		return client.NewClient("unix:///var/run/docker.sock", docker_api_version, nil, defaultHeaders)
+	}
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "docker-respawn"
@@ -38,9 +52,8 @@ func main() {
 			cli.ShowAppHelp(c)
 			return nil
 		}
-		defaultHeaders := map[string]string{"User-Agent": "engine-api-cli-1.0"}
-		log.Info("Connecting to docker.sock... Checking heatlh status of ", imageName)
-		cli, err := client.NewClient("unix:///var/run/docker.sock", "1.24", nil, defaultHeaders)
+		log.Info("Connecting to docker.sock... Checking health status of ", imageName)
+		cli, err := CreateClient()
 		if err != nil {
 			log.Error(err)
 			return err
